@@ -46,6 +46,7 @@ async function main() {
   const resetOriginBtn = document.getElementById("reset-origin");
   const fpsEl = document.getElementById("fps");
   const pointCountEl = document.getElementById("point-count");
+  const emptyHintEl = document.getElementById("empty-hint");
   const speedSlider = document.getElementById("speed-slider");
   const speedLabel = document.getElementById("speed-label");
   const fovSlider = document.getElementById("fov-slider");
@@ -59,6 +60,21 @@ async function main() {
   const fullscreenBtn = document.getElementById("fullscreen-btn");
   const shDegreeGroup = document.getElementById("sh-degree-group");
   const bgGroup = document.getElementById("bg-group");
+
+  const bgColors = {
+    black: [0, 0, 0],
+    grey: [0, 0, 0],
+    white: [1, 1, 1],
+  };
+  const defaultBg =
+    bgGroup.querySelector("button.active")?.dataset.bg || "grey";
+  const initialBg = bgColors[defaultBg] || bgColors.grey;
+  renderer.setClearColor(initialBg[0], initialBg[1], initialBg[2]);
+
+  function setEmptyHint(visible) {
+    if (!emptyHintEl) return;
+    emptyHintEl.style.display = visible ? "block" : "none";
+  }
 
   /* ── Panel toggle logic ── */
   const panelLeft = document.getElementById("panel-left");
@@ -105,7 +121,9 @@ async function main() {
   resGroup.addEventListener("click", (e) => {
     const btn = e.target.closest("button");
     if (!btn) return;
-    resGroup.querySelectorAll("button").forEach((b) => b.classList.remove("active"));
+    resGroup
+      .querySelectorAll("button")
+      .forEach((b) => b.classList.remove("active"));
     btn.classList.add("active");
     resScale = parseFloat(btn.dataset.res);
     applyResolution();
@@ -117,7 +135,9 @@ async function main() {
   renderModeGroup.addEventListener("click", (e) => {
     const btn = e.target.closest("button");
     if (!btn) return;
-    renderModeGroup.querySelectorAll("button").forEach((b) => b.classList.remove("active"));
+    renderModeGroup
+      .querySelectorAll("button")
+      .forEach((b) => b.classList.remove("active"));
     btn.classList.add("active");
     renderer.setRenderMode(btn.dataset.mode);
     pointSizeField.style.display = btn.dataset.mode === "points" ? "" : "none";
@@ -131,7 +151,9 @@ async function main() {
   camModeGroup.addEventListener("click", (e) => {
     const btn = e.target.closest("button");
     if (!btn) return;
-    camModeGroup.querySelectorAll("button").forEach((b) => b.classList.remove("active"));
+    camModeGroup
+      .querySelectorAll("button")
+      .forEach((b) => b.classList.remove("active"));
     btn.classList.add("active");
 
     const mode = btn.dataset.cam;
@@ -216,17 +238,20 @@ async function main() {
   shDegreeGroup.addEventListener("click", (e) => {
     const btn = e.target.closest("button");
     if (!btn) return;
-    shDegreeGroup.querySelectorAll("button").forEach((b) => b.classList.remove("active"));
+    shDegreeGroup
+      .querySelectorAll("button")
+      .forEach((b) => b.classList.remove("active"));
     btn.classList.add("active");
     renderer.setShDegree(parseInt(btn.dataset.sh));
   });
 
   /* ── Background color toggle ── */
-  const bgColors = { black: [0, 0, 0], grey: [0.18, 0.18, 0.2], white: [1, 1, 1] };
   bgGroup.addEventListener("click", (e) => {
     const btn = e.target.closest("button");
     if (!btn) return;
-    bgGroup.querySelectorAll("button").forEach((b) => b.classList.remove("active"));
+    bgGroup
+      .querySelectorAll("button")
+      .forEach((b) => b.classList.remove("active"));
     btn.classList.add("active");
     const c = bgColors[btn.dataset.bg];
     renderer.setClearColor(c[0], c[1], c[2]);
@@ -296,7 +321,9 @@ async function main() {
   function ensureOrbitMode() {
     if (camera.mode === "fps") {
       setCameraMode(camera, canvas, "orbit");
-      camModeGroup.querySelectorAll("button").forEach((b) => b.classList.remove("active"));
+      camModeGroup
+        .querySelectorAll("button")
+        .forEach((b) => b.classList.remove("active"));
       camModeGroup.querySelector('[data-cam="orbit"]').classList.add("active");
       controlsOrbit.style.display = "";
       controlsFps.style.display = "none";
@@ -335,7 +362,10 @@ async function main() {
       case "f":
         fullscreenBtn.click();
         break;
-      case "1": case "2": case "3": case "4": {
+      case "1":
+      case "2":
+      case "3":
+      case "4": {
         const deg = parseInt(e.key) - 1; // 1→0, 2→1, 3→2, 4→3
         const btn = shDegreeGroup.querySelector(`[data-sh="${deg}"]`);
         if (btn) btn.click();
@@ -347,6 +377,7 @@ async function main() {
   /* ── Drag-and-drop PLY loading ── */
   function loadPlyBuffer(buffer, name) {
     loaded = false;
+    setEmptyHint(false);
     setStatus(`Parsing ${(buffer.byteLength / 1e6).toFixed(1)} MB...`);
     const data = parsePly(buffer);
 
@@ -377,8 +408,10 @@ async function main() {
     camera.fpsSpeed = 5;
 
     defaultCam = {
-      theta: camera.theta, phi: camera.phi,
-      radius: camera.radius, target: [center[0], center[1], center[2]],
+      theta: camera.theta,
+      phi: camera.phi,
+      radius: camera.radius,
+      target: [center[0], center[1], center[2]],
     };
 
     // Update SH degree buttons to reflect model's native degree
@@ -403,10 +436,13 @@ async function main() {
       return;
     }
     setStatus(`Reading ${file.name}...`);
-    file.arrayBuffer().then((buf) => loadPlyBuffer(buf, file.name)).catch((err) => {
-      setStatus("Error: " + err.message);
-      console.error(err);
-    });
+    file
+      .arrayBuffer()
+      .then((buf) => loadPlyBuffer(buf, file.name))
+      .catch((err) => {
+        setStatus("Error: " + err.message);
+        console.error(err);
+      });
   });
 
   /* ── apply initial resolution ── */
@@ -417,9 +453,21 @@ async function main() {
   async function loadModel() {
     const model = modelSelect.value;
     const iter = iterSelect.value;
+
+    if (model === "none") {
+      loaded = false;
+      renderer.clearScene();
+      setEmptyHint(true);
+      pointCountEl.textContent = "0 pts";
+      gaussLabel.textContent = "All";
+      setStatus("Select a model and iteration to load");
+      return;
+    }
+
     const url = `models/${model}/point_cloud/iteration_${iter}/point_cloud.ply`;
 
     loaded = false;
+    setEmptyHint(false);
     setStatus(`Loading ${model} (iter ${iter})...`);
 
     try {
@@ -460,7 +508,9 @@ async function main() {
 
           // Log estimated scene up for diagnostics, but always use Y-up
           const estimatedUp = estimateSceneUp(cams);
-          console.log(`[GS] Estimated scene up: [${estimatedUp[0].toFixed(3)}, ${estimatedUp[1].toFixed(3)}, ${estimatedUp[2].toFixed(3)}]`);
+          console.log(
+            `[GS] Estimated scene up: [${estimatedUp[0].toFixed(3)}, ${estimatedUp[1].toFixed(3)}, ${estimatedUp[2].toFixed(3)}]`,
+          );
 
           // Always Y-up: fixed orbit frame
           camera.up = [0, 1, 0];
@@ -508,8 +558,10 @@ async function main() {
       renderer.setShDegree(maxSH);
 
       loaded = true;
+      setEmptyHint(false);
       setStatus(`${data.count.toLocaleString()} Gaussians loaded`);
     } catch (err) {
+      setEmptyHint(true);
       setStatus("Error: " + err.message);
       console.error(err);
     }
@@ -517,6 +569,10 @@ async function main() {
 
   modelSelect.addEventListener("change", loadModel);
   iterSelect.addEventListener("change", loadModel);
+
+  setStatus("Select a model and iteration to load");
+  pointCountEl.textContent = "0 pts";
+  setEmptyHint(true);
 
   /* ── FPS counter ── */
   let frameCount = 0;
@@ -545,16 +601,20 @@ async function main() {
       updateKeyboardMovement(camera, dt);
       updateCameraInertia(camera);
       updateZoomSmooth();
-      updateCameraMatrix(camera);
-      renderer.render(
-        context,
-        camera.viewMatrix,
-        camera.projMatrix,
-        canvas.width,
-        canvas.height,
-        maxDraw,
-        camera.eye,
-      );
+    }
+
+    updateCameraMatrix(camera);
+    renderer.render(
+      context,
+      camera.viewMatrix,
+      camera.projMatrix,
+      canvas.width,
+      canvas.height,
+      maxDraw,
+      camera.eye,
+    );
+
+    if (loaded) {
       helpers.render(context, camera.viewMatrix, camera.projMatrix);
 
       if (screenshotRequested) {
@@ -574,14 +634,14 @@ async function main() {
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
-
-  await loadModel();
 }
 
 /* ── helpers ── */
 
 function estimateSceneUp(cams) {
-  let ux = 0, uy = 0, uz = 0;
+  let ux = 0,
+    uy = 0,
+    uz = 0;
   for (const cam of cams) {
     const r = cam.rotation;
     const upColmap = [-r[0][1], -r[1][1], -r[2][1]];

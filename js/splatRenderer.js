@@ -25,12 +25,36 @@ export async function createSplatRenderer(device, canvasFormat) {
   /* ── shared bind group layout (uniform + 5 storage) ── */
   const bindGroupLayout = device.createBindGroupLayout({
     entries: [
-      { binding: 0, visibility: GPUShaderStage.VERTEX, buffer: { type: "uniform" } },
-      { binding: 1, visibility: GPUShaderStage.VERTEX, buffer: { type: "read-only-storage" } },
-      { binding: 2, visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT, buffer: { type: "read-only-storage" } },
-      { binding: 3, visibility: GPUShaderStage.VERTEX, buffer: { type: "read-only-storage" } },
-      { binding: 4, visibility: GPUShaderStage.VERTEX, buffer: { type: "read-only-storage" } },
-      { binding: 5, visibility: GPUShaderStage.VERTEX, buffer: { type: "read-only-storage" } },
+      {
+        binding: 0,
+        visibility: GPUShaderStage.VERTEX,
+        buffer: { type: "uniform" },
+      },
+      {
+        binding: 1,
+        visibility: GPUShaderStage.VERTEX,
+        buffer: { type: "read-only-storage" },
+      },
+      {
+        binding: 2,
+        visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
+        buffer: { type: "read-only-storage" },
+      },
+      {
+        binding: 3,
+        visibility: GPUShaderStage.VERTEX,
+        buffer: { type: "read-only-storage" },
+      },
+      {
+        binding: 4,
+        visibility: GPUShaderStage.VERTEX,
+        buffer: { type: "read-only-storage" },
+      },
+      {
+        binding: 5,
+        visibility: GPUShaderStage.VERTEX,
+        buffer: { type: "read-only-storage" },
+      },
     ],
   });
 
@@ -40,16 +64,28 @@ export async function createSplatRenderer(device, canvasFormat) {
 
   /* ── blend state (shared by both pipelines) ── */
   const blendState = {
-    color: { srcFactor: "one", dstFactor: "one-minus-src-alpha", operation: "add" },
-    alpha: { srcFactor: "one", dstFactor: "one-minus-src-alpha", operation: "add" },
+    color: {
+      srcFactor: "one",
+      dstFactor: "one-minus-src-alpha",
+      operation: "add",
+    },
+    alpha: {
+      srcFactor: "one",
+      dstFactor: "one-minus-src-alpha",
+      operation: "add",
+    },
   };
 
   /* ── splat pipeline ── */
   const splatPipeline = device.createRenderPipeline({
     label: "splat pipeline",
     layout: pipelineLayout,
-    vertex:   { module: splatModule, entryPoint: "vertexMain" },
-    fragment: { module: splatModule, entryPoint: "fragmentMain", targets: [{ format: canvasFormat, blend: blendState }] },
+    vertex: { module: splatModule, entryPoint: "vertexMain" },
+    fragment: {
+      module: splatModule,
+      entryPoint: "fragmentMain",
+      targets: [{ format: canvasFormat, blend: blendState }],
+    },
     primitive: { topology: "triangle-strip" },
   });
 
@@ -57,8 +93,12 @@ export async function createSplatRenderer(device, canvasFormat) {
   const pointPipeline = device.createRenderPipeline({
     label: "point pipeline",
     layout: pipelineLayout,
-    vertex:   { module: pointModule, entryPoint: "vertexMain" },
-    fragment: { module: pointModule, entryPoint: "fragmentMain", targets: [{ format: canvasFormat, blend: blendState }] },
+    vertex: { module: pointModule, entryPoint: "vertexMain" },
+    fragment: {
+      module: pointModule,
+      entryPoint: "fragmentMain",
+      targets: [{ format: canvasFormat, blend: blendState }],
+    },
     primitive: { topology: "triangle-strip" },
   });
 
@@ -139,18 +179,57 @@ export async function createSplatRenderer(device, canvasFormat) {
     });
   }
 
-  function getGaussianCount() { return gaussianCount; }
-  function getRenderMode() { return renderMode; }
-  function setRenderMode(mode) { renderMode = mode; }
-  function getPointSize() { return pointSize; }
-  function setPointSize(s) { pointSize = s; }
-  function getMaxShDegree() { return shDegree; }
-  function getShDegree() { return shDegreeOverride ?? shDegree; }
-  function setShDegree(d) { shDegreeOverride = d; }
+  function clearScene() {
+    if (positionBuffer) positionBuffer.destroy();
+    if (colorBuffer) colorBuffer.destroy();
+    if (cov3dBuffer) cov3dBuffer.destroy();
+    if (sortBuffer) sortBuffer.destroy();
+    if (shBuffer) shBuffer.destroy();
+
+    positionBuffer = null;
+    colorBuffer = null;
+    cov3dBuffer = null;
+    sortBuffer = null;
+    shBuffer = null;
+    bindGroup = null;
+    gaussianCount = 0;
+    sorter = null;
+    gaussianPositions = null;
+    shDegree = 0;
+    shDegreeOverride = null;
+    lastSortView.fill(0);
+  }
+
+  function getGaussianCount() {
+    return gaussianCount;
+  }
+  function getRenderMode() {
+    return renderMode;
+  }
+  function setRenderMode(mode) {
+    renderMode = mode;
+  }
+  function getPointSize() {
+    return pointSize;
+  }
+  function setPointSize(s) {
+    pointSize = s;
+  }
+  function getMaxShDegree() {
+    return shDegree;
+  }
+  function getShDegree() {
+    return shDegreeOverride ?? shDegree;
+  }
+  function setShDegree(d) {
+    shDegreeOverride = d;
+  }
 
   let shDegreeOverride = null; // null = use model's native degree
   let clearColor = { r: 0, g: 0, b: 0, a: 1 };
-  function setClearColor(r, g, b) { clearColor = { r, g, b, a: 1 }; }
+  function setClearColor(r, g, b) {
+    clearColor = { r, g, b, a: 1 };
+  }
 
   /**
    * @param {GPUCanvasContext} context
@@ -161,46 +240,82 @@ export async function createSplatRenderer(device, canvasFormat) {
    * @param {number} maxDraw
    * @param {number[]} cameraPos — world-space eye [x, y, z]
    */
-  function render(context, viewMatrix, projMatrix, vpWidth, vpHeight, maxDraw, cameraPos) {
-    if (!bindGroup || gaussianCount === 0) return;
+  function render(
+    context,
+    viewMatrix,
+    projMatrix,
+    vpWidth,
+    vpHeight,
+    maxDraw,
+    cameraPos,
+  ) {
+    if (!bindGroup || gaussianCount === 0) {
+      const encoder = device.createCommandEncoder();
+      const pass = encoder.beginRenderPass({
+        label: "clear pass",
+        colorAttachments: [
+          {
+            view: context.getCurrentTexture().createView(),
+            loadOp: "clear",
+            clearValue: clearColor,
+            storeOp: "store",
+          },
+        ],
+      });
+      pass.end();
+      device.queue.submit([encoder.finish()]);
+      return;
+    }
 
     const drawCount = Math.min(gaussianCount, maxDraw || gaussianCount);
 
     /* ── CPU sort (skip if camera hasn't moved) ── */
     let needsSort = false;
     for (let i = 0; i < 16; i++) {
-      if (Math.abs(viewMatrix[i] - lastSortView[i]) > 1e-6) { needsSort = true; break; }
+      if (Math.abs(viewMatrix[i] - lastSortView[i]) > 1e-6) {
+        needsSort = true;
+        break;
+      }
     }
     if (needsSort) {
       sorter.sort(gaussianPositions, viewMatrix, gaussianCount);
-      device.queue.writeBuffer(sortBuffer, 0, sorter.indices.buffer, 0, gaussianCount * 4);
+      device.queue.writeBuffer(
+        sortBuffer,
+        0,
+        sorter.indices.buffer,
+        0,
+        gaussianCount * 4,
+      );
       lastSortView.set(viewMatrix);
     }
 
     /* ── uniforms ── */
     uniformData.set(viewMatrix, 0);
     uniformData.set(projMatrix, 16);
-    uniformData[32] = projMatrix[0] * vpWidth * 0.5;   // focal x
-    uniformData[33] = projMatrix[5] * vpHeight * 0.5;  // focal y
+    uniformData[32] = projMatrix[0] * vpWidth * 0.5; // focal x
+    uniformData[33] = projMatrix[5] * vpHeight * 0.5; // focal y
     uniformData[34] = vpWidth;
     uniformData[35] = vpHeight;
     uniformData[36] = cameraPos[0];
     uniformData[37] = cameraPos[1];
     uniformData[38] = cameraPos[2];
     // Slot 39: shDegree for splats, pointSize for points
-    uniformData[39] = renderMode === "points" ? pointSize : (shDegreeOverride ?? shDegree);
+    uniformData[39] =
+      renderMode === "points" ? pointSize : (shDegreeOverride ?? shDegree);
     device.queue.writeBuffer(uniformBuffer, 0, uniformData);
 
     /* ── render pass ── */
     const encoder = device.createCommandEncoder();
     const pass = encoder.beginRenderPass({
       label: "render pass",
-      colorAttachments: [{
-        view: context.getCurrentTexture().createView(),
-        loadOp: "clear",
-        clearValue: clearColor,
-        storeOp: "store",
-      }],
+      colorAttachments: [
+        {
+          view: context.getCurrentTexture().createView(),
+          loadOp: "clear",
+          clearValue: clearColor,
+          storeOp: "store",
+        },
+      ],
     });
 
     pass.setPipeline(renderMode === "points" ? pointPipeline : splatPipeline);
@@ -212,9 +327,16 @@ export async function createSplatRenderer(device, canvasFormat) {
   }
 
   return {
-    uploadGaussians, render, getGaussianCount,
-    getRenderMode, setRenderMode,
-    getPointSize, setPointSize,
-    getMaxShDegree, getShDegree, setShDegree, setClearColor,
+    uploadGaussians,
+    render,
+    getGaussianCount,
+    getRenderMode,
+    setRenderMode,
+    getPointSize,
+    setPointSize,
+    getMaxShDegree,
+    getShDegree,
+    setShDegree,
+    setClearColor,
   };
 }
